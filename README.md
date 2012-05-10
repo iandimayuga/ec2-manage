@@ -1,3 +1,5 @@
+To use this script, you'll need to have **boto** AWS Python tools installed: https://github.com/boto/boto `pip install -U boto`
+
 config.json should be in the following format:
 
     {
