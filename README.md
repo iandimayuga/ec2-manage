@@ -2,11 +2,11 @@ config.json should be in the following format:
 
     {
       "addresses" : {
-        "domain"  : "xxx.xxx.xxx.xxx"
+        "domain0"  : "xxx.xxx.xxx.xxx"
       },
       "instances" : {
-        "name"  : "i-xxxxxxxx",
-        "name"  : "i-xxxxxxxx"
+        "name0"  : "i-xxxxxxxx",
+        "name1"  : "i-xxxxxxxx"
       },
       "sizes" : {
         "micro" : "t1.micro",
