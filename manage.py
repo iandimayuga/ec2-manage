@@ -2,25 +2,39 @@
 # Ian Dimayuga's EC2 Management
 
 import sys
+import time
 import argparse
 import json
 import boto
 
 config = json.loads( open("config.json", "r").read())
-if not config:
+if not config or not "addresses" in config or not "instances" in config or not "sizes" in config:
   print "Failed to load config.json."
   sys.exit(-1)
 parser = argparse.ArgumentParser()
+verbose = False
+sleepTime = 2
 
 # main method
 def main():
+  instanceNames = [json.dumps(key).replace('\"','') for key in config["instances"].keys()]
+  sizeNames = [json.dumps(key).replace('\"','') for key in config["sizes"].keys()]
+  addressNames = [json.dumps(key).replace('\"','') for key in config["addresses"].keys()]
+
   # get options
-  parser.add_argument("instance", help="Name of instance.", choices=[json.dumps(key) for key in config["instances"].keys()])
+  parser.add_argument("instance", help="Name of instance.", choices=instanceNames)
+  parser.add_argument("-s", "--status", help="Display data about the instance.", action="store_true")
   parser.add_argument("-u", "--start", help="Start or restart instance", action="store_true")
   parser.add_argument("-d", "--stop", help="Stop instance. If --start is flagged, this will start and then stop the instance.", action="store_true")
-  parser.add_argument("-r", "--resize", help="Change size of instance. Nothing happens if instance is already this size.", choices=[json.dumps(key) for key in config["sizes"].keys()])
-  parser.add_argument("-i", "--address", help="Assign an IP address to the instance. Note that a stopped instance will not retain its address.", choices=[json.dumps(key) for key in config["addresses"].keys()])
-  parser.parse_args()
+  parser.add_argument("-r", "--resize", help="Change size of instance. If the instance is running it will be restarted. Nothing happens if instance is already this size.", choices=sizeNames)
+  parser.add_argument("-i", "--address", help="Assign an IP address to the instance. Note that this does nothing if --stop.", choices=addressNames)
+  parser.add_argument("-v", "--verbose", help="Display verbose output. Note that this implies --status.", action="store_true")
+  args = parser.parse_args()
+
+  # set flags
+  global verbose
+  verbose = args.verbose
+  status = args.verbose or args.status
 
   # connect to EC2
   conn = boto.connect_ec2()
@@ -28,22 +42,112 @@ def main():
     print "Failed to connect to EC2."
     sys.exit(-1)
 
-  instance = conn.get_all_instances(filters={'instance-state-name':'stopped'})[0][0]
+  # get Instance object
+  instanceID = config["instances"][args.instance]
+  instance = conn.get_all_instances(filters={'instance-id':instanceID})[0].instances[0]
   if not instance:
-    print "Failed to get the specified instance."
+    print "Failed to retrieve the specified instance."
     sys.exit(-1)
 
-def resize(conn, instance, size):
+  hasRestarted = False
+  # Resizing may already restart the instance
+  if args.resize:
+    print "***Resize instance to %s***" % config["sizes"][args.resize]
+    hasRestarted = resize(instance, args.resize)
+
+  if args.start and not hasRestarted:
+    if instance.state == "running":
+      print "***Reboot instance***"
+      printv("Rebooting instance...")
+      instance.reboot()
+      time.sleep(sleepTime)
+    else:
+      print "***Start instance***"
+      printv("Starting instance...")
+      instance.start()
+    while instance.state != "running":
+      time.sleep(sleepTime)
+      instance.update()
+    printv("Instance is running.")
+
+  if args.stop:
+    print "***Stop instance***"
+    printv("Stopping instance...")
+    instance.stop()
+    while instance.state != "stopped":
+      time.sleep(sleepTime)
+      instance.update()
+    printv("Instance is stopped.")
+
+  elif args.address:
+    print "***Assign '%s' IP address to instance***" % args.address
+    assign(instance, args.address)
+
+  if status:
+    display(args.instance, instance)
+
+def display(name, instance):
+  output = {}
+  output['name'] = name
+  output['id'] = instance.id
+  output['type'] = instance.instance_type
+  output['address'] = instance.ip_address
+  output['state'] = instance.state
+  print json.dumps(output)
+
+def printv(output):
+  if verbose:
+    print "\t%s" % output
+
+# Return value: True if the instance was restarted as a result of this function.
+#               False if either the instance was already this size, or if the instance was stopped to begin with.
+def resize(instance, size):
+  size = config["sizes"][size]
+  if instance.instance_type == size:
+    printv("The instance is already size %s.")
+    return False
   
-  running = (instance.state == "running")
+  running = False
   while instance.state != "stopped":
-    if running:
-      print "This instance is running. Stopping instance..."
+    if instance.state == "running":
+      running = True
+      printv("This instance is running. Stopping instance...")
       instance.stop()
+    time.sleep(sleepTime)
     instance.update()
+  printv("This instance is stopped.")
 
+  printv("Resizing instance...")
+  if not instance.modify_attribute("instanceType", size):
+    print "Failure to modify instance-type."
+    sys.exit(-1)
+  
+  while instance.instance_type != size:
+    time.sleep(sleepTime)
+    instance.update()
+  printv("Instance is now %s." % size)
 
+  if running:
+    printv("Starting instance...")
+    instance.start()
+    while instance.state != "running":
+      time.sleep(sleepTime)
+      instance.update()
+    printv("Instance is running.")
+    return True
+  return False
 
+# Assigns an IP address to the instance
+def assign(instance, address):
+  address = config["addresses"][address]
+  printv("Assigning IP address %s to instance..." % address)
+  if not instance.use_ip(address):
+    print "Failure to associate Elastic IP address."
+    sys.exit(-1)
+  while instance.ip_address != address:
+    time.sleep(sleepTime)
+    instance.update()
+  printv("Successfully assigned address.")
 
 if __name__ == "__main__":
   main()
