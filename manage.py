@@ -6,8 +6,10 @@ import time
 import argparse
 import json
 import boto
+from os import path
 
-config = json.loads( open("config.json", "r").read())
+config_json = path.join(path.dirname(__file__), 'config.json')
+config = json.loads( open(config_json, "r").read())
 if not config or not "addresses" in config or not "instances" in config or not "sizes" in config:
   print "Failed to load config.json."
   sys.exit(-1)
