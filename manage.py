@@ -45,30 +45,30 @@ def main():
   # connect to EC2
   conn = boto.ec2.connect_to_region(region)
   if not conn:
-    print "Failed to connect to EC2."
+    print "Failed to connect to EC2 region {r}.".format(r=region)
     sys.exit(-1)
 
   # get Instance object
   instanceID = config["instances"][args.instance]
   instance = conn.get_all_instances(filters={'instance-id':instanceID})[0].instances[0]
   if not instance:
-    print "Failed to retrieve the specified instance."
+    print "Failed to retrieve the specified instance '{i}' (id: {id}).".format(i=args.instance, id=instanceID)
     sys.exit(-1)
 
   hasRestarted = False
   # Resizing may already restart the instance
   if args.resize:
-    print "***Resize instance to %s***" % config["sizes"][args.resize]
+    print "***Resize instance '{name}' to {size}***".format(name=args.instance, size=config["sizes"][args.resize])
     hasRestarted = resize(instance, args.resize)
 
   if args.start and not hasRestarted:
     if instance.state == "running":
-      print "***Reboot instance***"
+      print "***Reboot instance '{name}'***".format(name=args.instance)
       printv("Rebooting instance...")
       instance.reboot()
       time.sleep(sleepTime)
     else:
-      print "***Start instance***"
+      print "***Start instance '{name}'***".format(name=args.instance)
       printv("Starting instance...")
       instance.start()
     while instance.state != "running":
@@ -77,7 +77,7 @@ def main():
     printv("Instance is running.")
 
   if args.stop:
-    print "***Stop instance***"
+    print "***Stop instance '{name}'***".format(name=args.instance)
     printv("Stopping instance...")
     instance.stop()
     while instance.state != "stopped":
@@ -86,15 +86,16 @@ def main():
     printv("Instance is stopped.")
 
   elif args.address:
-    print "***Assign '%s' IP address to instance***" % args.address
+    print "***Assign '{ip}' IP address to instance '{name}'***".format(ip=args.address, name=args.instance) 
     assign(instance, args.address)
 
   if status:
-    display(args.instance, instance)
+    display(args.instance, instance, region)
 
-def display(name, instance):
+def display(name, instance, region):
   output = {}
   output['name'] = name
+  output['region'] = region
   output['id'] = instance.id
   output['type'] = instance.instance_type
   output['address'] = instance.ip_address
