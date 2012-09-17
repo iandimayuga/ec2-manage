@@ -31,7 +31,7 @@ def main():
   parser.add_argument("-d", "--stop", help="Stop instance. If --start is flagged, this will start and then stop the instance.", action="store_true")
   parser.add_argument("-r", "--resize", help="Change size of instance. If the instance is running it will be restarted. Nothing happens if instance is already this size.", choices=sizeNames)
   parser.add_argument("-i", "--address", help="Assign an IP address to the instance. Note that this does nothing if --stop.", choices=addressNames)
-  parser.add_argument("-v", "--verbose", help="Display verbose output. Note that this implies --status.", action="store_true")
+  parser.add_argument("-v", "--verbose", help="Display verbose output. This will also pretty-print --status.", action="store_true")
   args = parser.parse_args()
 
   # set flags
@@ -100,7 +100,7 @@ def display(name, instance, region):
   output['type'] = instance.instance_type
   output['address'] = instance.ip_address
   output['state'] = instance.state
-  print json.dumps(output)
+  print json.dumps(output, indent = 4 if verbose else None)
 
 def printv(output):
   if verbose:
