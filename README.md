@@ -12,6 +12,10 @@ config.json should be in the following format:
         "name0"  : "i-xxxxxxxx",
         "name1"  : "i-xxxxxxxx"
       },
+      "regions" : {
+        "name0"  : "us-west-1",
+        "name1"  : "us-east-1"
+      },
       "sizes" : {
         "micro" : "t1.micro",
         "small" : "m1.small"

@@ -6,11 +6,12 @@ import time
 import argparse
 import json
 import boto
+import boto.ec2
 from os import path
 
 config_json = path.join(path.dirname(__file__), 'config.json')
 config = json.loads( open(config_json, "r").read())
-if not config or not "addresses" in config or not "instances" in config or not "sizes" in config:
+if not config or not "addresses" in config or not "instances" in config or not "regions" in config or not "sizes" in config:
   print "Failed to load config.json."
   sys.exit(-1)
 parser = argparse.ArgumentParser()
@@ -38,8 +39,11 @@ def main():
   verbose = args.verbose
   status = args.verbose or args.status
 
+  # find the region name
+  region = config["regions"][args.instance]
+
   # connect to EC2
-  conn = boto.connect_ec2()
+  conn = boto.ec2.connect_to_region(region)
   if not conn:
     print "Failed to connect to EC2."
     sys.exit(-1)
