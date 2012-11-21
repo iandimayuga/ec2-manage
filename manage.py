@@ -88,7 +88,7 @@ def main():
   elif args.address:
     print "***Assign '{ip}' IP address to instance '{name}'***".format(ip=args.address, name=args.instance) 
     if instance.state != "running" and instance.state != "pending":
-      print "***Cannot assign an IP address to a stopped or stopping instance***"
+      print "Cannot assign an IP address to a stopped or stopping instance"
     else:
       assign(instance, args.address)
       printv("IP address is now {ip}".format(instance.ip_address))
@@ -108,14 +108,14 @@ def display(name, instance, region):
 
 def printv(output):
   if verbose:
-    print "\t%s" % output
+    print "\t" + output
 
 # Return value: True if the instance was restarted as a result of this function.
 #               False if either the instance was already this size, or if the instance was stopped to begin with.
 def resize(instance, size):
   size = config["sizes"][size]
   if instance.instance_type == size:
-    printv("The instance is already size %s.")
+    printv("The instance is already size {s}.".format(s=size))
     return False
   
   running = False
