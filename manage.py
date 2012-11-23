@@ -88,10 +88,10 @@ def main():
   elif args.address:
     print "***Assign '{ip}' IP address to instance '{name}'***".format(ip=args.address, name=args.instance) 
     if instance.state != "running" and instance.state != "pending":
-      print "Cannot assign an IP address to a stopped or stopping instance"
+      print "\tCannot assign an IP address to a stopped or stopping instance"
     else:
       assign(instance, args.address)
-      printv("IP address is now {ip}".format(instance.ip_address))
+      printv("IP address is now {ip}".format(ip=instance.ip_address))
 
   if status:
     display(args.instance, instance, region)
